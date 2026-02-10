@@ -32,21 +32,23 @@ async def test_db():
     settings = get_settings()
     test_db_name = f"{settings.mongodb_database}_test"
     
-    # Connect to test database
-    db.client = AsyncIOMotorClient(settings.mongodb_url)
-    database = db.client[test_db_name]
-    db.collection = database[settings.mongodb_collection]
-    
+    # Connect to test database using class attributes (Database.get_collection checks class attrs)
+    db.__class__.client = AsyncIOMotorClient(settings.mongodb_url)
+    database = db.__class__.client[test_db_name]
+    db.__class__.collection = database[settings.mongodb_collection]
+
     # Create indexes
-    await db.collection.create_index("id", unique=True)
-    await db.collection.create_index("category")
-    await db.collection.create_index("deletedAt")
-    
+    await db.__class__.collection.create_index("id", unique=True)
+    await db.__class__.collection.create_index("category")
+    await db.__class__.collection.create_index("deletedAt")
+
     yield db
-    
-    # Cleanup: Drop test database after tests
-    await db.client.drop_database(test_db_name)
-    db.client.close()
+
+    # Cleanup: Drop test database after tests and reset class attributes
+    await db.__class__.client.drop_database(test_db_name)
+    db.__class__.client.close()
+    db.__class__.client = None
+    db.__class__.collection = None
 
 
 @pytest.fixture
